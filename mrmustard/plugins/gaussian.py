@@ -1,4 +1,5 @@
 from mrmustard import Backend
+backend = Backend()
 from mrmustard._typing import *
 from math import pi, sqrt
 from thewalrus.quantum import is_pure_cov
@@ -15,7 +16,6 @@ The GaussianPlugin implements:
     - Gaussian entropies [upcoming]
     - Gaussian entanglement [upcoming]
 """
-backend = Backend()
 
 #  ~~~~~~
 #  States
@@ -482,3 +482,55 @@ def purity(cov: Matrix, hbar: float) -> Scalar:
         float: the purity
     """
     return 1 / backend.sqrt(backend.det((2 / hbar) * cov))
+
+
+def clone_cov(cov: Matrix, modes: Sequence[int], times: int = 1) -> Matrix:
+    r"""
+    Returns the covariance matrix of the state after cloning the specified modes.
+    Arguments:
+        cov (Matrix): the covariance matrix
+        modes (Sequence[int]): the modes to clone
+        times (int): the number of times to clone the modes (default: 1)
+    Returns:
+        Matrix: the covariance matrix after cloning the specified modes
+    """
+    N = len(cov) // 2
+    D = len(modes)
+    cov4 = backend.transpose(backend.reshape(cov, (2, N, 2, N)), (1,3,0,2))  # shape is [N,N,2,2]
+
+    rows = backend.gather(cov4, modes, axis=0)  # shape is [D,N,2,2]
+    rows = backend.update_tensor(rows, [[i,m] for i,m in enumerate(modes)], [backend.zeros((2,2), dtype=rows.dtype) for m in modes])
+    rows = backend.tile(rows, (times,1,1,1))
+    rows = backend.transpose(rows, (2,3,0,1))  # shape is [2,2,DT,N]
+    
+
+    cols = backend.gather(cov4, modes, axis=1)  # shape is [N,D,2,2]
+    cols = backend.update_tensor(cols, [[m,i] for i,m in enumerate(modes)], [backend.zeros((2,2), dtype=rows.dtype) for m in modes])
+    cols = backend.tile(cols, (1,times,1,1))
+    cols = backend.transpose(cols, (2,3,0,1))  # shape is [2,2,N,DT]
+
+    cov4 = backend.transpose(cov4, (2,3,0,1))  # shape is [2,2,N,N]
+    diag = backend.gather(backend.gather(cov4, modes, axis=2), modes, axis=3)
+    diag = backend.diag(backend.tile(backend.diag_part(diag), (1,1,times))) # shape is [2,2,DT,DT]
+
+    cov = backend.block([[cov4, cols],[rows, diag]])  # shape is [2,2,N+DT,N+DT]
+    _,_,m,n = cov.shape
+    return backend.reshape(backend.transpose(cov, (0,2,1,3)), (2*m, 2*n))
+
+def clone_means(means: Vector, modes: Sequence[int], times: int) -> Vector:
+    r"""
+    Returns the means vector of the state after cloning the specified modes.
+    Arguments:
+        means (Vector): the means vector
+        modes (Sequence[int]): the modes to clone
+        times (int): the number of times to clone the modes
+    Returns:
+        Vector: the means vector after cloning the specified modes
+    """
+    N = len(means) // 2
+    D = len(modes)
+    means2 = backend.reshape(means, (2, N))  # shape is [2, N]
+    rows = backend.gather(means2, modes, axis=1)  # shape is [2, D]
+    rows = backend.tile(rows, (1, times)) # shape is [2, DT]
+    means = backend.concatenate([means2, rows], axis=1)  # shape is [2, N+DT]
+    return backend.reshape(means, (2*(N+D*times)))
