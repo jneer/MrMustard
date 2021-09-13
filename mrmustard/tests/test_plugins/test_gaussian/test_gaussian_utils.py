@@ -36,13 +36,14 @@ def test_partition_cov_2modes():
     assert np.allclose(AB, [[5, 7], [13, 15]])  # effectively BA because A is mode 1
 
 
-def test_partition_cov_3modes():
-    pass  # TODO
+def test_cloning():
+    cov = np.array([[1,2],[3,4]])
+    cov_cloned = gp.clone_cov(cov, modes=[0], times=1)
+    cov_expected = np.array([[1,0,2,0],[0,3,0,4],[0,1,0,2],[0,3,0,4]])
+    assert np.allclose(cov_cloned, cov_expected)
 
-    # arr = np.array([[1,2,3,4,5,6],
-    #                 [7,8,9,10,11,12],
-    #                 [13,14,15,16,17,18],
-    #                 [19,20,21,22,23,24],
-    #                 [25,26,27,28,29,30],
-    #                 [31,32,33,34,35,36]])
-    # A,B,AB = gp.partition_cov(gp.backend.astensor(arr), Amodes=[0,2])
+def test_cloning_means():
+    means = np.array([1,2])
+    means_cloned = gp.clone_means(means, modes=[0], times=1)
+    means_expected = np.array([1,1,2,2])
+    assert np.allclose(means_cloned, means_expected)

@@ -496,23 +496,22 @@ def clone_cov(cov: Matrix, modes: Sequence[int], times: int = 1) -> Matrix:
     """
     N = len(cov) // 2
     D = len(modes)
-    cov4 = backend.transpose(backend.reshape(cov, (2, N, 2, N)), (1,3,0,2))  # shape is [N,N,2,2]
+    cov4 = backend.transpose(backend.reshape(cov, (2, N, 2, N)), (1,3,0,2)) # shape is [N,N,2,2]
 
     rows = backend.gather(cov4, modes, axis=0)  # shape is [D,N,2,2]
     rows = backend.update_tensor(rows, [[i,m] for i,m in enumerate(modes)], [backend.zeros((2,2), dtype=rows.dtype) for m in modes])
-    rows = backend.tile(rows, (times,1,1,1))
-    rows = backend.transpose(rows, (2,3,0,1))  # shape is [2,2,DT,N]
+    rows = backend.transpose(backend.tile(rows, (times,1,1,1)), (2,3,0,1)) # shape is [2,2,DT,N]
     
-
     cols = backend.gather(cov4, modes, axis=1)  # shape is [N,D,2,2]
     cols = backend.update_tensor(cols, [[m,i] for i,m in enumerate(modes)], [backend.zeros((2,2), dtype=rows.dtype) for m in modes])
-    cols = backend.tile(cols, (1,times,1,1))
-    cols = backend.transpose(cols, (2,3,0,1))  # shape is [2,2,N,DT]
+    cols = backend.transpose(backend.tile(cols, (1,times,1,1)), (2,3,0,1)) # shape is [2,2,N,DT]
 
     cov4 = backend.transpose(cov4, (2,3,0,1))  # shape is [2,2,N,N]
-    diag = backend.gather(backend.gather(cov4, modes, axis=2), modes, axis=3)
-    diag = backend.diag(backend.tile(backend.diag_part(diag), (1,1,times))) # shape is [2,2,DT,DT]
 
+    diag = backend.expand_dims(backend.gather(backend.gather(cov4, modes, axis=2), modes, axis=3), axis=4)  # shape is [2,2,D,D,1]
+    diag = backend.diag(backend.tile(diag, (1,1,1,1,times))) # shape is [2,2,D,D,T,T]
+    diag = backend.reshape(diag, (2,2,D*times,D*times))  # shape is [2,2,DT,DT]
+    
     cov = backend.block([[cov4, cols],[rows, diag]])  # shape is [2,2,N+DT,N+DT]
     _,_,m,n = cov.shape
     return backend.reshape(backend.transpose(cov, (0,2,1,3)), (2*m, 2*n))
@@ -532,5 +531,5 @@ def clone_means(means: Vector, modes: Sequence[int], times: int) -> Vector:
     means2 = backend.reshape(means, (2, N))  # shape is [2, N]
     rows = backend.gather(means2, modes, axis=1)  # shape is [2, D]
     rows = backend.tile(rows, (1, times)) # shape is [2, DT]
-    means = backend.concatenate([means2, rows], axis=1)  # shape is [2, N+DT]
+    means = backend.concat([means2, rows], axis=1)  # shape is [2, N+DT]
     return backend.reshape(means, (2*(N+D*times)))

@@ -1,8 +1,8 @@
 from mrmustard._typing import *
-from mrmustard.abstract import Parametrized, Transformation
+from mrmustard.abstract import Parametrized, Transformation, State
 from mrmustard.plugins import gaussian, train
 
-__all__ = ["Dgate", "Sgate", "Rgate", "Ggate", "BSgate", "MZgate", "S2gate", "Interferometer", "LossChannel"]
+__all__ = ["Dgate", "Sgate", "Rgate", "Ggate", "BSgate", "MZgate", "S2gate", "Interferometer", "LossChannel", "CloningGate"]
 
 
 class Dgate(Parametrized, Transformation):
@@ -340,3 +340,15 @@ class LossChannel(Parametrized, Transformation):
 
     def Y_matrix(self, hbar: float):
         return gaussian.loss_Y(self.transmissivity, hbar=hbar)
+
+
+#  NON-PHYSICAL
+
+class CloningGate(Parametrized):
+    def __init__(self, modes: List[int], times: int = 1):
+        super().__init__(modes=modes, times=times)
+    
+    def __call__(self, state: State) -> State:
+        cov = gaussian.clone_cov(state.cov, self._modes, self._times)
+        means = gaussian.clone_means(state.means, self._modes, self._times)
+        return State(hbar=state.hbar, cov=cov, means=means, mixed=state.isMixed)
