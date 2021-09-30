@@ -10,7 +10,7 @@ from functools import lru_cache, wraps
 
 class Autocast:
     r"""
-    A decorator that casts all castable arguments of a method to the dtype with highest precision. # TODO: cast to lowest precision?
+    A decorator that casts all castable arguments of a method to the dtype with highest precision.
     """
 
     def __init__(self):
@@ -60,14 +60,22 @@ class BackendInterface(ABC):
     All methods are pure (no side effects) and are be used by the plugins.
     """
 
+    __instance = None
+
+    # all backends are singletons
+    def __new__(cls, *args, **kwargs):
+        if cls.__instance is None:
+            cls.__instance = object.__new__(cls)
+        return cls.__instance
+
     # ~~~~~~~~~
     # Basic ops
     # ~~~~~~~~~
 
-    def atleast_1d(self, array: Tensor, dtype=None) -> Tensor:
+    def atleast_1d(self, array: Tensor) -> Tensor:
         ...
 
-    def astensor(self, array: Tensor) -> Tensor:
+    def astensor(self, array: Tensor, dtype) -> Tensor:
         ...
 
     def conj(self, array: Tensor) -> Tensor:
@@ -79,22 +87,19 @@ class BackendInterface(ABC):
     def imag(self, array: Tensor) -> Tensor:
         ...
 
-    def exp(self, array: Tensor) -> Tensor:
-        ...
-
-    def expm(self, matrix: Tensor) -> Tensor:
-        ...
-
     def cos(self, array: Tensor) -> Tensor:
-        ...
-
-    def sin(self, array: Tensor) -> Tensor:
         ...
 
     def cosh(self, array: Tensor) -> Tensor:
         ...
 
+    def sin(self, array: Tensor) -> Tensor:
+        ...
+
     def sinh(self, array: Tensor) -> Tensor:
+        ...
+
+    def exp(self, array: Tensor) -> Tensor:
         ...
 
     def lgamma(self, x: Tensor) -> Tensor:
@@ -103,7 +108,10 @@ class BackendInterface(ABC):
     def log(self, x: Tensor) -> Tensor:
         ...
 
-    def cast(self, array: Tensor, dtype) -> Tensor:
+    def sqrt(self, x: Tensor) -> Tensor:
+        ...
+
+    def cast(self, x: Tensor, dtype) -> Tensor:
         ...
 
     def maximum(self, a: Tensor, b: Tensor) -> Tensor:
@@ -115,6 +123,9 @@ class BackendInterface(ABC):
     def abs(self, array: Tensor) -> Tensor:
         ...
 
+    def expm(self, matrix: Tensor) -> Tensor:
+        ...
+
     def norm(self, array: Tensor) -> Tensor:
         ...
 
@@ -124,7 +135,7 @@ class BackendInterface(ABC):
     def matvec(self, a: Tensor, b: Tensor, transpose_a=False, adjoint_a=False) -> Tensor:
         ...
 
-    def tensordot(self, a: Tensor, b: Tensor, axes: Sequence[int]) -> Tensor:
+    def tensordot(self, a: Tensor, b: Tensor, axes: List[int]) -> Tensor:
         ...
 
     def einsum(self, string: str, *tensors) -> Tensor:
@@ -156,7 +167,7 @@ class BackendInterface(ABC):
     ) -> Tensor:
         ...
 
-    def transpose(self, a: Tensor, perm: Sequence[int] = None):
+    def transpose(self, a: Tensor, perm: Sequence[int]):
         ...
 
     def reshape(self, array: Tensor, shape: Sequence[int]) -> Tensor:
@@ -186,7 +197,7 @@ class BackendInterface(ABC):
     def ones_like(self, array: Tensor) -> Tensor:
         ...
 
-    def gather(self, array: Tensor, indices: Tensor, axis: int) -> Tensor:
+    def gather(self, array: Tensor, indices: Tensor, axis: Tensor) -> Tensor:
         ...
 
     def trace(self, array: Tensor) -> Tensor:
@@ -196,9 +207,6 @@ class BackendInterface(ABC):
         ...
 
     def update_tensor(self, tensor: Tensor, indices: Tensor, values: Tensor) -> Tensor:
-        ...
-
-    def assign(self, tensor: Tensor, value: Tensor) -> Tensor:
         ...
 
     def update_add_tensor(self, tensor: Tensor, indices: Tensor, values: Tensor) -> Tensor:
@@ -216,7 +224,7 @@ class BackendInterface(ABC):
     def asnumpy(self, tensor: Tensor) -> Tensor:
         ...
 
-    def hash_tensor(self, tensor: Tensor) -> int:
+    def hash_tensor(self, tensor: Tensor) -> str:
         ...
 
     def hermite_renormalized(self, A: Tensor, B: Tensor, C: Tensor, shape: Sequence[int]) -> Tensor:
@@ -271,7 +279,7 @@ class BackendInterface(ABC):
 
     def single_mode_to_multimode_vec(self, vec, num_modes: int):
         r"""
-        Apply the same 2-vector (i.e. single-mode) to a larger number of modes.
+        Expand a 2-vector (i.e. single-mode) to a larger number of modes.
         """
         if vec.shape[-1] != 2:
             raise ValueError("vec must be 2-dimensional (i.e. single-mode)")
@@ -281,7 +289,7 @@ class BackendInterface(ABC):
 
     def single_mode_to_multimode_mat(self, mat: Tensor, num_modes: int):
         r"""
-        Apply the same 2x2 matrix (i.e. single-mode) to a larger number of modes.
+        Expand a 2x2 matrix (i.e. single-mode) to a larger number of modes.
         """
         if mat.shape[-2:] != (2, 2):
             raise ValueError("mat must be a single-mode (2x2) matrix")
@@ -322,7 +330,7 @@ class BackendInterface(ABC):
         O = np.zeros_like(I)
         return np.block([[O, I], [-I, O]])
 
-    def add_at_modes(self, old: Tensor, new: Optional[Tensor], modes: Sequence[int]) -> Tensor:
+    def add_at_modes(self, old: Tensor, new: Optional[Tensor], modes: List[int]) -> Tensor:
         "adds two phase-space tensors (cov matrices, displacement vectors, etc..) on the specified modes"
         if new is None:
             return old
@@ -330,7 +338,7 @@ class BackendInterface(ABC):
         indices = modes + [m + N for m in modes]
         return self.update_add_tensor(old, list(product(*[indices] * len(new.shape))), self.reshape(new, -1))
 
-    def left_matmul_at_modes(self, a_partial: Tensor, b_full: Tensor, modes: Sequence[int]) -> Tensor:
+    def left_matmul_at_modes(self, a_partial: Tensor, b_full: Tensor, modes: List[int]) -> Tensor:
         r"""
         Left matrix multiplication of a partial matrix and a full matrix.
         It assumes that that `a_partial` is a matrix operating on M modes and that `modes` is a list of M integers,
@@ -351,7 +359,7 @@ class BackendInterface(ABC):
         b_rows = self.matmul(a_partial, b_rows)
         return self.update_tensor(b_full, indices[:, None], b_rows)
 
-    def right_matmul_at_modes(self, a_full: Tensor, b_partial: Tensor, modes: Sequence[int]) -> Tensor:
+    def right_matmul_at_modes(self, a_full: Tensor, b_partial: Tensor, modes: List[int]) -> Tensor:
         r"""
         Right matrix multiplication of a full matrix and a partial matrix.
         It assumes that that `b_partial` is a matrix operating on M modes and that `modes` is a list of M integers,
@@ -366,7 +374,7 @@ class BackendInterface(ABC):
         """
         return self.transpose(self.left_matmul_at_modes(self.transpose(b_partial), self.transpose(a_full), modes))
 
-    def matvec_at_modes(self, mat: Optional[Tensor], vec: Tensor, modes: Sequence[int]) -> Tensor:
+    def matvec_at_modes(self, mat: Optional[Tensor], vec: Tensor, modes: List[int]) -> Tensor:
         "matrix-vector multiplication between a phase-space matrix and a vector in the specified modes"
         if mat is None:
             return vec
@@ -442,80 +450,10 @@ class BackendInterface(ABC):
         Returns:
             Matrix: symplectic gradient tensor
         """
-        Jmat = self.J(S.shape[-1] // 2)
+        Jmat = self.J(S.shape[0] // 2)
         Z = self.matmul(self.transpose(S), dS_riemann)
         return 0.5 * (Z + self.matmul(self.matmul(Jmat, self.transpose(Z)), Jmat))
 
     def rearrange_rows_and_columns(self, matrix, permutation):
         "Rearrange the rows and the columns of a matrix without using self.gather"
         return self.transpose(self.transpose(matrix)[permutation])
-
-
-class TensorWrapperInterface:  # NOTE: copilot generated
-    """
-    Wrapper for tensor objects to make them work with any backend.
-    """
-
-    _backend: BackendInterface
-
-    def __init__(self, tensor: Tensor, sparse: bool = False, name: str = None):
-        self._name = name
-        self._sparse = True
-        self._tensor = self._backend.astensor(tensor)
-
-    def __getattr__(self, attr):
-        return getattr(self._tensor, attr)
-
-    def __getitem__(self, item):
-        return self._tensor[item]
-
-    def __setitem__(self, key, value):  # override with custom gradient
-        self._tensor.__setitem__(key, value)
-
-    def __array__(self, *args, **kwargs):
-        return self._tensor.__array__(*args, **kwargs)
-
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        return self._tensor.__array_ufunc__(ufunc, method, *inputs, **kwargs)
-
-    def __array_function__(self, func, types, args, kwargs):
-        return self._tensor.__array_function__(func, types, args, kwargs)
-
-    def __repr__(self):
-        return self._tensor.__repr__()
-
-    def __str__(self):
-        return self._tensor.__str__()
-
-    def __hash__(self):
-        return self._tensor.__hash__()
-
-    def __eq__(self, other):
-        return self._tensor.__eq__(other)
-
-    def __ne__(self, other):
-        return self._tensor.__ne__(other)
-
-    def __lt__(self, other):
-        return self._tensor.__lt__(other)
-
-    def __le__(self, other):
-        return self._tensor.__le__(other)
-
-    def __gt__(self, other):
-        return self._tensor.__gt__(other)
-
-    def __ge__(self, other):
-        return self._tensor.__ge__(other)
-
-    def __bool__(self):
-        return self._tensor.__bool__()
-
-    def __nonzero__(self):
-        return self._tensor.__nonzero__()
-
-    def __len__(self):
-        return self._tensor.__len__()
-
-    def __iter__(self):
-        return self._tensor.__iter__()
