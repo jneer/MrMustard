@@ -553,3 +553,17 @@ def fidelity(mu1: float, cov1: Matrix, mu2: float, cov2: Matrix, hbar=2.0, rtol=
     fidelity = f0 * backend.exp((-1 / 2) * dot)  # square of equation 95
 
     return backend.cast(fidelity, "float64")
+
+def log_negativity(cov: Matrix) -> float:
+    r"""
+    Returns the log_negativity of a Gaussian state.
+
+    Reference: https://arxiv.org/pdf/quant-ph/0102117.pdf, Equation 57, 61.
+    """
+
+    vals = sympletic_eigenvals(cov)
+    mask = 2*vals < 1
+
+    vals_filtered = backend.boolean_mask(vals, mask) # Get rid of terms that would lead to zero contribution.
+
+    return backend.sum(-backend.log(2*vals_filtered)/backend.log(2))

@@ -324,3 +324,7 @@ class Backend(BackendInterface):
             return self.zeros_like(tensor)
         else:
             return tf.linalg.sqrtm(tensor)
+
+    def boolean_mask(self, tensor: tf.Tensor, mask: tf.Tensor) -> Tensor:
+        "Returns a tensor based on the truth value of the boolean mask."
+        return tf.boolean_mask(tensor, mask)
