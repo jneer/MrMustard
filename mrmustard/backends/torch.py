@@ -301,3 +301,6 @@ class Backend(BackendInterface):
 
     def sqrtm(self, tensor: torch.Tensor) -> Tensor:
         raise NotImplementedError
+
+    def boolean_mask(self, tensor: torch.Tensor, mask: torch.Tensor) -> Tensor:
+        return torch.masked_select(tensor, mask)
