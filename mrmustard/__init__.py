@@ -28,7 +28,7 @@ class Settings:
     def BACKEND(self):
         return self._backend
 
-    @backend.setter
+    @BACKEND.setter
     def BACKEND(self, backend_name: str):
         if backend_name not in ["tensorflow", "pytorch"]:
             raise ValueError("Backend must be either 'tensorflow' or 'pytorch'")

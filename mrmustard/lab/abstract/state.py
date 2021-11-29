@@ -103,12 +103,10 @@ class State:
         r"""
         Returns the purity of the state.
         """
-        if self._purity is None:
-            if self.is_gaussian:
-                self._purity = gaussian.purity(self.cov, settings.HBAR)
-            else:
-                self._purity = fock.purity(self._fock)  # dm
-        return self._purity
+        if self.is_gaussian:
+            return gaussian.purity(self.cov, settings.HBAR)
+        else:
+            return fock.purity(self.dm())
 
     @property
     def modes(self) -> List[int]:
@@ -164,27 +162,19 @@ class State:
             self._fock = fock.fock_representation(self.cov, self.means, shape=self.shape, return_dm=self.is_mixed)
         return self._fock
 
-    @property
-    def number_means(self) -> Vector:
-        r"""
-        Returns the mean photon number for each mode.
-        """
-        if self.is_gaussian:
-            return gaussian.number_means(self.cov, self.means, settings.HBAR)
-        else:
-            return fock.number_means(tensor=self.fock, is_dm=self.is_mixed)
 
     @property
-    def number_cov(self) -> Matrix:
+    def is_normalized(self) -> bool:
         r"""
-        Returns the complete photon number covariance matrix.
+        Returns whether the state is normalized
         """
         if self.is_gaussian:
-            return gaussian.number_cov(self.cov, self.means, settings.HBAR)
+            return gaussian.is_normalized(self.cov)
         else:
-            raise NotImplementedError("number_cov not implemented for non-gaussian states")
+            return fock.is_normalized(self.fock)
+        
 
-    def ket(self, cutoffs: Sequence[Optional[int]]) -> Optional[Tensor]:
+    def ket(self, cutoffs: Sequence[Optional[int]] = None) -> Optional[Tensor]:
         r"""
         Returns the ket of the state in Fock representation or `None` if the state is mixed.
         Arguments:
