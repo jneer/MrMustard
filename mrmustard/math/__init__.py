@@ -28,7 +28,7 @@ class Math:
     """
 
     def __getattribute__(self, name):
-        if settings.backend == "tensorflow":
+        if settings.BACKEND == "tensorflow":
             return object.__getattribute__(TFMath(), name)
-        elif settings.backend == "torch":
+        elif settings.BACKEND == "torch":
             return object.__getattribute__(TorchMath(), name)
