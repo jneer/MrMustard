@@ -326,12 +326,12 @@ class Transformation:
                 if (s is not None) != (o is not None):
                     return False
                 if s is not None and o is not None:
-                    if not np.allclose(s, o, rtol=settings.EQ_TRANSFORMATION_RTOL_GAUSS):
+                    if not np.allclose(s, o, rtol=settings.EQ_RTOL_GAUSS):
                         return False
             return True
         else:
             return np.allclose(
-                self.choi(cutoffs=[settings.EQ_TRANSFORMATION_CUTOFF] * self.num_modes),
-                other.choi(cutoffs=[settings.EQ_TRANSFORMATION_CUTOFF] * self.num_modes),
-                rtol=settings.EQ_TRANSFORMATION_RTOL_FOCK,
+                self.choi(cutoffs=[settings.EQ_CUTOFF] * self.num_modes),
+                other.choi(cutoffs=[settings.EQ_CUTOFF] * self.num_modes),
+                rtol=settings.EQ_RTOL_FOCK,
             )
