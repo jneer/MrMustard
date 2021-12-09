@@ -140,7 +140,7 @@ def mikkel_plot(rho: np.ndarray, filename: str = "", xbounds=(-6, 6), ybounds=(-
     ax[1][0].grid(grid)
 
     # X quadrature probability distribution
-    ax[0][0].fill(X, ProbX, color=cm.RdBu(0.5))
+    ax[0][0].fill_between(X, ProbX, color=cm.RdBu(0.5))
     ax[0][0].plot(X, ProbX)
     ax[0][0].get_xaxis().set_ticks(ticks)
     ax[0][0].xaxis.set_ticklabels([])
@@ -152,7 +152,7 @@ def mikkel_plot(rho: np.ndarray, filename: str = "", xbounds=(-6, 6), ybounds=(-
     ax[0][0].grid(grid)
 
     # P quadrature probability distribution
-    ax[1][1].fill(ProbP, P, color=cm.RdBu(0.5))
+    ax[1][1].fill_betweenx(P, ProbP, color=cm.RdBu(0.5))
     ax[1][1].plot(ProbP, P)
     ax[1][1].get_xaxis().set_ticks([])
     ax[1][1].get_yaxis().set_ticks(ticks)
